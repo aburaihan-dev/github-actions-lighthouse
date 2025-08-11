@@ -1,0 +1,275 @@
+# GitHub Actions Monitor Configuration
+
+# GitHub Repository Configuration
+github:
+  # GitHub personal access token
+  # Can be set in multiple ways (in order of precedence):
+  # 1. Environment variable: GITHUB_TOKEN
+  # 2. .env file: GITHUB_TOKEN=your_token_here
+  # 3. Directly in this config file (not recommended for security)
+  token: "${GITHUB_TOKEN}"
+  
+  # API Configuration
+  api_base_url: "https://api.github.com"
+  timeout: 30
+
+# Repositories to monitor
+repositories:
+  - "your-org/your-frontend-repo"
+  - "your-org/your-backend-repo"
+
+# Monitoring Configuration
+monitoring:
+  # Polling interval in seconds
+  poll_interval: 60
+  
+  # Parallel processing settings
+  enable_parallel: true         # Enable/disable parallel repository processing
+  max_parallel_workers: 3       # Maximum concurrent repository checks
+  timeout_per_repo: 60          # Timeout per repository check (seconds)
+  
+  # Workflows to monitor (empty list means monitor all workflows)
+  # You can specify workflow names or IDs
+  workflows:
+    - "your-workflow.yml"
+  
+  # Only monitor workflows on specific branches (empty list means all branches)
+  branches:
+    - "your-branch"
+
+# Commands to execute on successful workflow completion
+commands:
+  # Named command definitions that can be reused
+  definitions:
+    echo_status:
+      description: "Update deployment status"
+      command: "echo 'Workflow completed successfully at $(date)'"
+      working_directory: "/tmp"
+    
+    detect_kubeconfig:
+      description: "Detect available kubeconfig files"
+      command: |
+        echo "=== Kubeconfig Detection ===" && \
+        echo "Checking for kubeconfig files..." && \
+        echo "1. Checking /root/.kube/config:" && \
+        sudo ls -la /root/.kube/config 2>/dev/null || echo "   Not found or no access" && \
+        echo "2. Checking /etc/kubernetes/admin.conf:" && \
+        sudo ls -la /etc/kubernetes/admin.conf 2>/dev/null || echo "   Not found or no access" && \
+        echo "3. Checking current user access to /root/.kube/config:" && \
+        sudo -u github-monitor ls -la /root/.kube/config 2>/dev/null || echo "   github-monitor user cannot access" && \
+        echo "4. Testing kubectl without explicit kubeconfig:" && \
+        sudo kubectl version --client 2>/dev/null || echo "   kubectl not working without explicit config" && \
+        echo "=== Detection complete ==="
+      working_directory: "/tmp"
+      timeout: 30
+    
+    test_kubectl:
+      description: "Test kubectl configuration"
+      command: |
+        echo "=== kubectl Configuration Test ===" && \
+        echo "Testing kubectl with admin.conf..." && \
+        sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf version --client && \
+        echo "Testing cluster connectivity..." && \
+        sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf cluster-info && \
+        echo "Testing namespace access..." && \
+        sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf get namespaces | grep your-namespace && \
+        echo "=== kubectl test completed ==="
+      working_directory: "/tmp"
+      timeout: 60
+    
+    test_environment:
+      description: "Test environment variables"
+      command: |
+        echo "=== Environment Variables Test ===" && \
+        echo "REPO_NAME: $REPO_NAME" && \
+        echo "WORKFLOW_NAME: $WORKFLOW_NAME" && \
+        echo "BRANCH_NAME: $BRANCH_NAME" && \
+        echo "RUN_NUMBER: $RUN_NUMBER" && \
+        echo "COMMIT_MESSAGE: $COMMIT_MESSAGE" && \
+        echo "Current time: $(date)" && \
+        echo "=== End Test ==="
+      working_directory: "/tmp"
+      timeout: 15
+    
+    debug_whatsapp_json:
+      description: "Debug WhatsApp JSON generation"
+      command: |
+        echo "=== WhatsApp JSON Debug ===" && \
+        echo "Creating JSON payload..." && \
+        JSON_DATA="{
+          \"chatId\": \"YOUR_WHATSAPP_GROUP_ID@g.us\",
+          \"reply_to\": null,
+          \"text\": \"🚀 Deployment completed successfully!\\n\\nRepository: $REPO_NAME\\nWorkflow: $WORKFLOW_NAME\\nBranch: $BRANCH_NAME\\nRun #: $RUN_NUMBER\\nCommit: $COMMIT_MESSAGE\\nTime: $(date)\",
+          \"linkPreview\": true,
+          \"linkPreviewHighQuality\": false,
+          \"session\": \"default\"
+        }" && \
+        echo "JSON payload:" && \
+        echo "$JSON_DATA" && \
+        echo "=== Debug complete ==="
+      working_directory: "/tmp"
+      timeout: 15
+    
+    test_json_generation:
+      description: "Test JSON payload generation for WhatsApp"
+      command: |
+        echo "=== JSON Generation Test ===" && \
+        echo "Testing simple JSON generation..." && \
+        MESSAGE_TEXT="🚀 Test message - Repository: $REPO_NAME, Workflow: $WORKFLOW_NAME, Branch: $BRANCH_NAME, Run: $RUN_NUMBER, Commit: $COMMIT_MESSAGE, Time: $(date)" && \
+        JSON_PAYLOAD=$(printf '{"chatId":"YOUR_WHATSAPP_GROUP_ID@g.us","reply_to":null,"text":"%s","linkPreview":true,"linkPreviewHighQuality":false,"session":"default"}' "$MESSAGE_TEXT") && \
+        echo "Generated JSON payload length: ${#JSON_PAYLOAD} characters" && \
+        echo "=== JSON test completed ==="
+      working_directory: "/tmp"
+      timeout: 30
+    
+    test_whatsapp_connection:
+      description: "Test WhatsApp API connectivity"
+      command: |
+        echo "Testing WhatsApp API connection..." && \
+        curl --connect-timeout 5 --max-time 15 -s \
+          -X GET 'http://YOUR_WHATSAPP_API_SERVER:3000/' && \
+        echo "WhatsApp API server is reachable" || \
+        echo "WhatsApp API not reachable - check network connectivity"
+      working_directory: "/tmp"
+      timeout: 30
+    
+    whatsapp_notify:
+      description: "Send WhatsApp notification"
+      command: |
+        echo "Sending WhatsApp notification..." && \
+        curl --connect-timeout 10 --max-time 30 -X POST \
+          'http://YOUR_WHATSAPP_API_SERVER:3000/api/sendText' \
+          -H 'Accept: application/json' \
+          -H 'Content-Type: application/json' \
+          -d "{
+            \"chatId\": \"YOUR_WHATSAPP_GROUP_ID@g.us\",
+            \"reply_to\": null,
+            \"text\": \"🚀 Deployment completed successfully!\\n\\nRepository: $REPO_NAME\\nWorkflow: $WORKFLOW_NAME\\nBranch: $BRANCH_NAME\\nRun #: $RUN_NUMBER\\nCommit Author: $COMMIT_AUTHOR\\nCommit: $COMMIT_MESSAGE\\nTime: $(date)\",
+            \"linkPreview\": true,
+            \"linkPreviewHighQuality\": false,
+            \"session\": \"default\"
+          }" && \
+        echo "WhatsApp notification sent successfully"
+      working_directory: "/tmp"
+      timeout: 45
+    
+    restart_frontend:
+      description: "Restart frontend service"
+      command: "sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf rollout restart deployment/your-frontend -n your-namespace"
+      working_directory: "/tmp"
+    
+    restart_backend:
+      description: "Restart backend service"
+      command: "sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf rollout restart deployment/your-backend -n your-namespace"
+      working_directory: "/tmp"
+    
+    sleep_5min:
+      description: "Wait 5 minutes before next monitoring cycle"
+      command: |
+        echo "Waiting 5 minutes before next monitoring cycle..." && \
+        echo "This prevents rapid re-execution of commands" && \
+        sleep 300 && \
+        echo "5 minute wait completed"
+      working_directory: "/tmp"
+      timeout: 320
+    
+    git_pull:
+      description: "Pull latest changes"
+      command: "git pull origin $BRANCH_NAME"
+      working_directory: "/tmp"
+
+  # Repository-branch specific command execution mapping
+  execution_map:
+    "your-org/your-frontend-repo":
+      "your-branch":
+        - "echo_status"
+        - "test_environment"
+        - "detect_kubeconfig"
+        - "test_kubectl"
+        - "restart_frontend"
+        - "sleep_5min"
+        # - "debug_whatsapp_json"
+        # - "test_whatsapp_connection"
+        - "whatsapp_notify"
+      # "main":
+      #   - "echo_status"
+      #   - "restart_frontend"
+      #   - "whatsapp_notify"
+        
+    "your-org/your-backend-repo":
+      "your-branch":
+        - "echo_status"
+        # - "test_environment"
+        - "detect_kubeconfig"
+        - "test_kubectl"
+        # - "git_pull"
+        - "restart_backend"
+        - "sleep_5min"
+        # - "test_json_generation"
+        # - "test_whatsapp_connection"
+        - "whatsapp_notify"
+      # "main":
+      #   - "echo_status"
+      #   - "restart_backend"
+      #   - "whatsapp_notify"
+        
+    # Default commands for any repo/branch not specifically mapped
+    "*":
+      "*":
+        - "echo_status"
+        - "whatsapp_notify"
+
+  # Legacy support: Commands executed for all repositories (deprecated, use execution_map instead)
+  on_success: []
+
+# Logging Configuration
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: "INFO"
+  
+  # Timezone for displaying timestamps (default: Asia/Dhaka)
+  # Use IANA timezone names (e.g., UTC, Asia/Dhaka, America/New_York, Europe/London)
+  timezone: "Asia/Dhaka"
+  
+  # Log file configuration
+  # Uses daily rotation with 30-day retention
+  file:
+    path: "/opt/github-actions-monitor/logs/monitor.log"
+    # Note: max_size_mb and backup_count are no longer used
+    # Daily rotation is automatic at midnight UTC
+    # Logs are kept for 30 days and then automatically deleted
+  
+  # Console logging (useful for debugging)
+  console:
+    enabled: true
+  
+  # Command execution logging
+  commands:
+    # Log level for command execution details (DEBUG, INFO, WARNING, ERROR)
+    # DEBUG: Shows detailed command info, permissions, environment, timing
+    # INFO: Shows command start/end and basic output
+    # WARNING: Shows only warnings and errors
+    log_level: "DEBUG"
+    
+    # Log command output to separate lines (easier to read)
+    detailed_output: true
+    
+    # Log environment variables passed to commands
+    log_environment: true
+    
+    # Log permission and user context information
+    log_permissions: true
+
+# State Management
+state:
+  # File to store last processed workflow run IDs
+  state_file: "/opt/github-actions-monitor/data/state.json"
+
+# Health Check (optional)
+health:
+  # Enable health check file
+  enabled: true
+  # Health check file path
+  file: "/opt/github-actions-monitor/data/health"
+  # Update interval in seconds
+  update_interval: 300

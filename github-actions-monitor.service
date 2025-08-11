@@ -1,0 +1,38 @@
+[Unit]
+Description=GitHub Actions Monitor Service
+Documentation=man:github_actions_monitor(1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=github-monitor
+Group=github-monitor
+WorkingDirectory=/opt/github-actions-monitor
+ExecStart=/opt/github-actions-monitor/venv/bin/python /opt/github-actions-monitor/github_actions_monitor.py --config /opt/github-actions-monitor/config/config.yaml
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/github-actions-monitor/logs /opt/github-actions-monitor/data /opt/github-actions-monitor/run
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/opt/github-actions-monitor
+EnvironmentFile=-/opt/github-actions-monitor/config/environment
+EnvironmentFile=-/opt/github-actions-monitor/.env
+
+# Resource limits
+LimitNOFILE=1048576
+LimitNPROC=1048576
+
+[Install]
+WantedBy=multi-user.target

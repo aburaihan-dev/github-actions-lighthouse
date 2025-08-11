@@ -96,7 +96,7 @@ Commands receive comprehensive context information:
    ```bash
    # Clone repository and enter directory
    git clone <repository-url>
-   cd larms-github-k8s-staging-deployment
+   cd github-actions-lighthouse
    
    # Copy configuration templates
    cp config.example.yaml config.yaml
@@ -203,7 +203,7 @@ repositories:
 monitoring:
   poll_interval: 60  # Check every 60 seconds
   workflows:
-    - "docker-build-push.yml"  # Monitor specific workflow files
+    - "your-workflow.yml"  # Monitor specific workflow files
     - "CI/CD Pipeline"          # Or by workflow name
   branches:
     - "main"                    # Monitor specific branches
@@ -225,13 +225,13 @@ commands:
 **Monitor multiple repositories with specific workflows**:
 ```yaml
 repositories:
-  - "company/frontend-app"
-  - "company/backend-api"
-  - "company/mobile-app"
+  - "your-org/frontend-app"
+  - "your-org/backend-api"
+  - "your-org/mobile-app"
 
 monitoring:
   workflows:
-    - "docker-build-push.yml"
+    - "your-workflow.yml"
     - "deploy-to-staging.yml"
     - "CI/CD Pipeline"
 ```
@@ -266,15 +266,15 @@ commands:
 **Real-world example for staging deployment**:
 ```yaml
 repositories:
-  - "DDCl-BD/larms-fronted"
-  - "DDCl-BD/Infyom_L10"
+  - "your-org/your-frontend-repo"
+  - "your-org/your-backend-repo"
 
 monitoring:
   poll_interval: 30  # Faster polling for staging
   workflows:
-    - "docker-build-push.yml"
+    - "your-workflow.yml"
   branches:
-    - "bcc-staging"
+    - "your-branch"
 
 commands:
   on_success:

@@ -1,0 +1,60 @@
+# Example configuration for Kubernetes deployment automation
+# This shows a practical example for monitoring GitHub Actions and deploying to K8s
+
+github:
+  token: "${GITHUB_TOKEN}"
+  repository: "your-org/your-k8s-app"
+  api_base_url: "https://api.github.com"
+  timeout: 30
+
+monitoring:
+  poll_interval: 30  # Check every 30 seconds for faster deployments
+  
+  # Monitor specific deployment workflows
+  workflows:
+    - "Build and Deploy to Staging"
+    - "CI/CD Pipeline"
+  
+  # Only monitor main branch for automatic deployments
+  branches:
+    - "main"
+
+commands:
+  on_success:
+    # Update Kubernetes deployment with latest image
+    - description: "Deploy to Kubernetes staging"
+      command: "kubectl apply -f /opt/k8s-manifests/staging/ --namespace=staging"
+      working_directory: "/opt/k8s-manifests"
+    
+    # Wait for rollout to complete
+    - description: "Wait for deployment rollout"
+      command: "kubectl rollout status deployment/your-app --namespace=staging --timeout=300s"
+    
+    # Run health check
+    - description: "Health check deployment"
+      command: "kubectl exec deployment/your-app --namespace=staging -- curl -f http://localhost:8080/health"
+    
+    # Send notification to Slack
+    - description: "Send Slack notification"
+      command: "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"✅ Staging deployment completed successfully\"}' https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+    
+    # Update deployment status in monitoring system
+    - description: "Update monitoring dashboard"
+      command: "curl -X POST 'https://your-monitoring-system.com/api/deployments' -H 'Content-Type: application/json' -d '{\"status\":\"deployed\",\"environment\":\"staging\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}'"
+
+logging:
+  level: "INFO"
+  file:
+    path: "/var/log/github-actions-monitor/monitor.log"
+    max_size_mb: 10
+    backup_count: 5
+  console:
+    enabled: true
+
+state:
+  state_file: "/var/lib/github-actions-monitor/state.json"
+
+health:
+  enabled: true
+  file: "/var/run/github-actions-monitor/health"
+  update_interval: 300

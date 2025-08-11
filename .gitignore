@@ -1,0 +1,107 @@
+# GitHub Actions Monitor - .gitignore
+
+# Environment files with sensitive data
+.env
+*.env.local
+config.yaml
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# virtualenv
+venv/
+ENV/
+env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Application specific
+logs/*.log
+logs/*.log.*
+data/state.json
+data/health
+config/config.yaml.backup
+backup/
+
+# Temporary files
+*.tmp
+*.temp
+*.pid
+*.lock
+
+# Local development
+test_output/
+debug/
+*.local
+
+# Service files (may contain system-specific paths)
+github-actions-monitor.service.local
+
+# Legacy scripts (preserved for reference, not for distribution)
+scripts-legacy/
+
+# Keep docs/ directory for technical documentation
+# Note: Essential docs are now in root for better visibility
+
+SANITIZATION_FINAL.md
